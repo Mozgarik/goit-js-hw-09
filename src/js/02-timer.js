@@ -2,94 +2,80 @@ import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import { Report } from 'notiflix/build/notiflix-report-aio';
 
-let timerSetValue = null;
-let intervalId = null;
+console.log(Date.parse("Dec 10, 2022"))
 
-const refs = {
-  datetimePicker: document.querySelector('#datetime-picker'),
-  btnStart: document.querySelector('[data-start]'),
-  daysField: document.querySelector('[data-days]'),
-  hoursField: document.querySelector('[data-hours]'),
-  minutesField: document.querySelector('[data-minutes]'),
-  secondsField: document.querySelector('[data-seconds]'),
-};
+const sec = document.querySelector('span[data-seconds]')
+const min = document.querySelector('span[data-minutes]')
+const hour = document.querySelector('span[data-hours]')
+const day = document.querySelector('span[data-days]')
+const button = document.querySelector('button[data-start]')
+
+button.setAttribute('disabled', 'disbaled')
+button.addEventListener('click', calculateDate)
+
 
 const options = {
   enableTime: true,
   time_24hr: true,
   defaultDate: new Date(),
   minuteIncrement: 1,
-  onClose: onFlatpickrClose,
+  onClose: handleClose,
 };
 
-flatpickr(refs.datetimePicker, options);
+function handleClose() {
+  const dateInFuture = Date.parse(futureDate.latestSelectedDateObj)
+    const currentTime = Date.now()
+    const data = dateInFuture - currentTime
+    const validate = validateData(data)
 
-refs.btnStart.addEventListener('click', onBtnStartClick);
-
-function checkTimerValue(timerValue) {
-  const currentTime = Date.now();
-  return timerValue - currentTime > 0 ? true : false;
 }
 
-function createWarning() {
-  Report.warning('Warning', 'Please choose a date in the future', 'Ok');
+const futureDate = flatpickr("#datetime-picker", options)
+
+
+function calculateDate() {
+  console.log(futureDate)
+  setInterval(() => {
+    const dateInFuture = Date.parse(futureDate.latestSelectedDateObj)
+    const currentTime = Date.now()
+    const data = dateInFuture - currentTime
+    const { days, hours, minutes, seconds } = convertMs(data)
+    changeMarkup({ days, hours, minutes, seconds })    
+  }, 1000) 
 }
 
-function onBtnStartClick() {
-  let currentTimerValue = null;
 
-  intervalId = setInterval(() => {
-    currentTimerValue = timerSetValue - Date.now();
-    if (currentTimerValue < 0) {
-      finishTimer();
-      return;
-    }
-    const convertTimerValues = convertMs(currentTimerValue);
-    updateTimerFace(convertTimerValues);
-  }, 1000);
+function changeMarkup({ days, hours, minutes, seconds }) {
+    sec.innerHTML = seconds;
+    min.innerHTML = minutes;
+    hour.innerHTML = hours;
+    day.innerHTML = days;
 }
 
-function finishTimer() {
-  clearInterval(intervalId);
-  intervalId = null;
-}
-
-function updateTimerFace({ days, hours, minutes, seconds }) {
-  refs.daysField.textContent = days;
-  refs.hoursField.textContent = hours;
-  refs.minutesField.textContent = minutes;
-  refs.secondsField.textContent = seconds;
+function validateData(data) {
+  if (data < 0) {
+    Report.warning('Warning', 'Please choose a date in the future', 'Ok');
+    return false 
+   }
+   button.removeAttribute('disabled')
 }
 
 function convertMs(ms) {
+  // Number of milliseconds per unit of time
   const second = 1000;
   const minute = second * 60;
   const hour = minute * 60;
   const day = hour * 24;
 
-  const days = pad(Math.floor(ms / day));
-  const hours = pad(Math.floor((ms % day) / hour));
-  const minutes = pad(Math.floor(((ms % day) % hour) / minute));
-  const seconds = pad(Math.floor((((ms % day) % hour) % minute) / second));
+  // Remaining days
+  const days = Math.floor(ms / day);
+  // Remaining hours
+  const hours = Math.floor((ms % day) / hour);
+  // Remaining minutes
+  const minutes = Math.floor(((ms % day) % hour) / minute);
+  // Remaining seconds
+  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
 
   return { days, hours, minutes, seconds };
 }
 
-function pad(value) {
-  return String(value).padStart(2, 0);
-}
-
-function onFlatpickrClose(selectedDates) {
-  const selectedDate = selectedDates[0].getTime();
-  const isValidTimerValue = checkTimerValue(selectedDate);
-
-  if (!isValidTimerValue) {
-    createWarning();
-    refs.btnStart.setAttribute('disabled', 'disabled');
-    return;
-  }
-
-  timerSetValue = selectedDate;
-
-  refs.btnStart.removeAttribute('disabled');
-}
